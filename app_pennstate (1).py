@@ -394,7 +394,7 @@ def build_combined_pdf(batter_figures):
 st.title("Penn State Baseball \u2014 Postgame Hitter Report")
 
 # Auto-load PSU logo bundled with the app
-_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'psu_logo.png (1)')
+_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'psu_logo.png')
 logo_img = mpimg.imread(_logo_path) if os.path.exists(_logo_path) else None
 
 uploaded_csv = st.file_uploader(
