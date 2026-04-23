@@ -117,35 +117,41 @@ def build_game_options(df):
 
 # ── Branding helper ────────────────────────────────────────────────────────────
 
-def draw_psu_header(fig, batter_name, game_label, logo_img=None):
-    """Draw navy header bar across the top with Penn State branding."""
-    hax = fig.add_axes([0, 0.91, 1, 0.09])
+def draw_psu_header(fig, batter_name, game_label, logo_img=None, stats_line=None):
+    """Draw navy header bar (14% of fig height) with logo, title, batter, stats."""
+    # Header occupies top 14% of figure
+    hax = fig.add_axes([0, 0.86, 1, 0.14])
     hax.set_xlim(0, 1)
     hax.set_ylim(0, 1)
     hax.axis('off')
+    # Navy fill
     hax.add_patch(patches.Rectangle((0, 0), 1, 1, transform=hax.transAxes,
                                      facecolor=PSU_NAVY, clip_on=False))
-    hax.add_patch(patches.Rectangle((0, 0), 1, 0.06, transform=hax.transAxes,
+    # Light blue bottom accent stripe
+    hax.add_patch(patches.Rectangle((0, 0), 1, 0.04, transform=hax.transAxes,
                                      facecolor=PSU_LTBLUE, clip_on=False))
 
     if logo_img is not None:
-        # Logo is 500x340 (w x h), aspect = 500/340 ≈ 1.47
-        # Header height in fig coords = 0.09, so logo height = 0.085
-        # logo width in fig coords = 0.085 * 1.47 * (fig_height/fig_width)
-        # fig is 20x12 → height/width = 12/20 = 0.6
-        logo_h = 0.082
-        logo_w = logo_h * (500 / 340) * (12 / 20)
-        for x_pos in [0.005, 1.0 - logo_w - 0.005]:
-            lax = fig.add_axes([x_pos, 0.914, logo_w, logo_h])
-            lax.imshow(logo_img, aspect='auto')
+        # logo aspect ratio: width/height. Axes coords: fig is 20w x 12h.
+        logo_h_fig = 0.13          # height in figure fraction
+        logo_aspect = logo_img.shape[1] / logo_img.shape[0]  # w/h pixels
+        logo_w_fig = logo_h_fig * logo_aspect * (12 / 20)    # correct for fig aspect
+        for x_pos in [0.002, 1.0 - logo_w_fig - 0.002]:
+            lax = fig.add_axes([x_pos, 0.865, logo_w_fig, logo_h_fig])
+            lax.imshow(logo_img)
             lax.axis('off')
 
-    hax.text(0.5, 0.70, 'PENN STATE NITTANY LIONS BASEBALL',
-             ha='center', va='center', fontsize=17, fontweight='bold',
+    # Three text rows inside header
+    hax.text(0.5, 0.75, 'PENN STATE NITTANY LIONS BASEBALL',
+             ha='center', va='center', fontsize=18, fontweight='bold',
              color=PSU_WHITE, transform=hax.transAxes)
-    hax.text(0.5, 0.28, f'{batter_name}   \u2022   {game_label}',
-             ha='center', va='center', fontsize=11,
+    hax.text(0.5, 0.46, f'{batter_name}   •   {game_label}',
+             ha='center', va='center', fontsize=12,
              color=PSU_LTBLUE, transform=hax.transAxes)
+    if stats_line:
+        hax.text(0.5, 0.18, stats_line,
+                 ha='center', va='center', fontsize=11,
+                 color='#ccddee', transform=hax.transAxes)
 
 
 def fig_to_png_bytes(fig):
@@ -166,7 +172,7 @@ def build_hitter_figures(batter_df, batter_name, game_label, logo_img=None):
     gs  = GridSpec(3, 4, figure=fig,
                    width_ratios=[1.5, 1.5, 1.5, 1.2],
                    height_ratios=[1, 1, 1],
-                   left=0.03, right=0.97, bottom=0.10, top=0.89,
+                   left=0.03, right=0.97, bottom=0.10, top=0.84,
                    wspace=0.25, hspace=0.40)
 
     axes = []
@@ -265,7 +271,7 @@ def build_hitter_figures(batter_df, batter_name, game_label, logo_img=None):
             ax_table.text(0.05, y_pos, f"  {row[0]}  |  {row[1]}  |  {row[2]}", fontsize=11)
             y_pos -= 0.04
 
-    # Stats line just below header
+    # Stats — passed into header so nothing overlaps the plot area
     whiffs    = batter_df['PitchCall'].eq('StrikeSwinging').sum()
     hard_hits = batter_df[(batter_df['PitchCall']=='InPlay') & (batter_df['ExitSpeed']>=95)].shape[0]
     barrels   = batter_df[(batter_df['ExitSpeed']>=95) & (batter_df['Angle'].between(10,35))].shape[0]
@@ -275,15 +281,13 @@ def build_hitter_figures(batter_df, batter_name, game_label, logo_img=None):
         (swings['PlateLocSide'] < -0.7083) | (swings['PlateLocSide'] > 0.7083) |
         (swings['PlateLocHeight'] < 1.5)   | (swings['PlateLocHeight'] > 3.3775)
     ].shape[0]
-    fig.text(0.5, 0.905,
-             f"Whiffs: {whiffs}    Hard Hit: {hard_hits}    Barrels: {barrels}    Chase: {chase}",
-             fontsize=13, ha='center', va='top', color='#333333')
+    stats_line = f"Whiffs: {whiffs}    Hard Hit: {hard_hits}    Barrels: {barrels}    Chase: {chase}"
 
-    draw_psu_header(fig, batter_name, game_label, logo_img)
+    draw_psu_header(fig, batter_name, game_label, logo_img, stats_line=stats_line)
 
     # ── Batted ball figure ─────────────────────────────────────────────────────
     bb_fig = plt.figure(figsize=(20, 12), facecolor='white')
-    bb_ax  = bb_fig.add_axes([0.04, 0.08, 0.55, 0.80])
+    bb_ax  = bb_fig.add_axes([0.04, 0.06, 0.55, 0.78])
 
     LF, LC, CF_dist, RC, RF = 330, 365, 390, 365, 330
     angles    = np.linspace(-45, 45, 500)
@@ -331,7 +335,7 @@ def build_hitter_figures(batter_df, batter_name, game_label, logo_img=None):
                   ncol=5, fontsize=10, frameon=False)
 
     # Stats panel right side
-    stats_ax = bb_fig.add_axes([0.62, 0.12, 0.35, 0.75])
+    stats_ax = bb_fig.add_axes([0.62, 0.06, 0.35, 0.78])
     stats_ax.axis('off')
     stats_ax.set_xlim(0, 1); stats_ax.set_ylim(0, 1)
     stats_ax.add_patch(patches.FancyBboxPatch(
@@ -362,7 +366,7 @@ def build_hitter_figures(batter_df, batter_name, game_label, logo_img=None):
         stats_ax.axhline(y_s - 0.055, xmin=0.08, xmax=0.92, color='#cccccc', linewidth=0.8)
         y_s -= 0.115
 
-    draw_psu_header(bb_fig, batter_name, game_label, logo_img)
+    draw_psu_header(bb_fig, batter_name, game_label, logo_img, stats_line=stats_line)
 
     return fig, bb_fig
 
